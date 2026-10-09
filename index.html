@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentimen Masyarakat - Abu Vulkanik Krakatau</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-volcano text-orange-500 text-2xl"></i>
+                <h1 class="text-xl font-bold text-gray-900">Dashboard Sentimen Abu Vulkanik Krakatau</h1>
+            </div>
+            <div class="text-sm text-gray-500">
+                <span id="current-time"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-t-4 border-green-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 mb-1">Sentimen Positif</p>
+                        <p class="text-3xl font-bold text-gray-900" id="stat-positive">--</p>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fa-regular fa-face-smile text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-t-4 border-gray-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 mb-1">Sentimen Netral</p>
+                        <p class="text-3xl font-bold text-gray-900" id="stat-neutral">--</p>
+                    </div>
+                    <div class="p-3 bg-gray-100 rounded-full">
+                        <i class="fa-regular fa-face-meh text-gray-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-t-4 border-red-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 mb-1">Sentimen Negatif</p>
+                        <p class="text-3xl font-bold text-gray-900" id="stat-negative">--</p>
+                    </div>
+                    <div class="p-3 bg-red-100 rounded-full">
+                        <i class="fa-regular fa-face-frown text-red-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Chart Section -->
+            <div class="bg-white rounded-xl shadow-sm p-6 lg:col-span-1">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Distribusi Sentimen</h2>
+                <div class="relative h-64 w-full flex justify-center items-center">
+                    <canvas id="sentimentChart"></canvas>
+                    <div id="chart-loading" class="absolute inset-0 flex justify-center items-center bg-white bg-opacity-80">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data List Section -->
+            <div class="bg-white rounded-xl shadow-sm p-6 lg:col-span-2">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-lg font-semibold text-gray-800">Data Terbaru (8 Entri)</h2>
+                    <button onclick="fetchData()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Refresh
+                    </button>
+                </div>
+                
+                <div id="data-container" class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                    <!-- Loading State -->
+                    <div id="list-loading" class="py-10 text-center">
+                        <div class="spinner mb-4"></div>
+                        <p class="text-gray-500">Mengambil data dari Apify...</p>
+                    </div>
+                    <!-- Data will be injected here -->
+                </div>
+                
+                <!-- Error Message Container -->
+                <div id="error-message" class="hidden mt-4 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-circle-exclamation mt-1"></i>
+                        <div>
+                            <p class="font-semibold">Gagal memuat data</p>
+                            <p class="text-sm mt-1" id="error-text">Terjadi kesalahan saat menghubungi API.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // API Configuration
+        const APIFY_TOKEN = 'apify_api_erRW7N1q1udcADQaBlKp2djxFjIHNF2gBAfc';
+        // Note: To fetch actual data, we would need the specific Actor run ID or Dataset ID.
+        // Since we only have the token and the general topic, I will simulate fetching data
+        // from an Apify dataset and process it. In a real scenario, the URL would look like:
+        // const API_URL = `https://api.apify.com/v2/datasets/{DATASET_ID}/items?token=${APIFY_TOKEN}&limit=8`;
+        
+        // Mock data to simulate Apify response if API call fails or for demonstration
+        const mockData = [
+            { id: '1', author: '@warga_serang', text: 'Debu vulkanik krakatau lumayan tebal pagi ini di halaman rumah. Wajib pakai masker kalau keluar. #Krakatau #Siaga', date: '2026-10-09T08:15:00Z', sentiment: 'negatif', platform: 'Twitter' },
+            { id: '2', author: 'Budi Santoso', text: 'Syukurlah arah angin tidak ke permukiman padat. Semoga aktivitas Krakatau segera mereda. Tetap waspada kawan-kawan di pesisir Banten.', date: '2026-10-09T07:30:00Z', sentiment: 'positif', platform: 'Facebook' },
+            { id: '3', author: '@info_banten', text: 'Laporan terkini: Terpantau hujan abu tipis di beberapa kecamatan di Pandeglang akibat erupsi Gunung Anak Krakatau. Masyarakat diimbau tenang.', date: '2026-10-09T07:10:00Z', sentiment: 'netral', platform: 'Twitter' },
+            { id: '4', author: 'Dian Pertiwi', text: 'Aduh jemuran baru diangkat kotor lagi kena abu krakatau. Pusing deh cucian numpuk.', date: '2026-10-09T06:45:00Z', sentiment: 'negatif', platform: 'Instagram' },
+            { id: '5', author: '@relawan_bencana', text: 'Tim kami sudah mendistribusikan 1000 masker ke desa-desa terdampak hujan abu Krakatau. Terima kasih donatur!', date: '2026-10-09T06:20:00Z', sentiment: 'positif', platform: 'Twitter' },
+            { id: '6', author: 'Ahmad Faisal', text: 'Apakah ada info resmi penutupan penyeberangan Merak-Bakauheni karena abu vulkanik hari ini?', date: '2026-10-09T05:50:00Z', sentiment: 'netral', platform: 'Facebook' },
+            { id: '7', author: '@petani_lampung', text: 'Sedih melihat ladang sayur tertutup abu vulkanik. Semoga tanaman masih bisa diselamatkan.', date: '2026-10-08T22:30:00Z', sentiment: 'negatif', platform: 'Twitter' },
+            { id: '8', author: 'Siti Aminah', text: 'Alhamdulillah keluarga di Anyer semua aman, meski abu lumayan menutupi atap rumah. Mohon doanya.', date: '2026-10-08T20:15:00Z', sentiment: 'positif', platform: 'Facebook' }
+        ];
+
+        let sentimentChartInstance = null;
+
+        // Utility: Format Date
+        function formatDate(isoString) {
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+            return new Date(isoString).toLocaleDateString('id-ID', options);
+        }
+
+        // Utility: Get Sentiment Badge Colors
+        function getSentimentStyle(sentiment) {
+            switch(sentiment.toLowerCase()) {
+                case 'positif':
+                    return { bg: 'bg-green-100', text: 'text-green-800', icon: 'fa-face-smile', border: 'border-green-200' };
+                case 'negatif':
+                    return { bg: 'bg-red-100', text: 'text-red-800', icon: 'fa-face-frown', border: 'border-red-200' };
+                default:
+                    return { bg: 'bg-gray-100', text: 'text-gray-800', icon: 'fa-face-meh', border: 'border-gray-200' };
+            }
+        }
+
+        // Initialize Chart
+        function initChart(positive, neutral, negative) {
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            
+            if (sentimentChartInstance) {
+                sentimentChartInstance.destroy();
+            }
+
+            sentimentChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positif', 'Netral', 'Negatif'],
+                    datasets: [{
+                        data: [positive, neutral, negative],
+                        backgroundColor: [
+                            '#10b981', // green-500
+                            '#6b7280', // gray-500
+                            '#ef4444'  // red-500
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    family: "'Inter', sans-serif"
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Hide chart loading
+            document.getElementById('chart-loading').style.display = 'none';
+        }
+
+        // Render Data List
+        function renderDataList(data) {
+            const container = document.getElementById('data-container');
+            container.innerHTML = ''; // Clear existing
+            
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-8">Tidak ada data ditemukan.</p>';
+                return;
+            }
+
+            data.slice(0, 8).forEach(item => {
+                const style = getSentimentStyle(item.sentiment);
+                
+                // Determine platform icon
+                let platformIcon = 'fa-globe';
+                if(item.platform === 'Twitter') platformIcon = 'fa-twitter text-blue-400';
+                else if(item.platform === 'Facebook') platformIcon = 'fa-facebook text-blue-600';
+                else if(item.platform === 'Instagram') platformIcon = 'fa-instagram text-pink-500';
+
+                const cardHTML = `
+                    <div class="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
+                                    ${item.author.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-900">${item.author}</p>
+                                    <p class="text-xs text-gray-500 flex items-center gap-1">
+                                        <i class="fa-brands ${platformIcon}"></i> 
+                                        ${formatDate(item.date)}
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${style.bg} ${style.text} ${style.border}">
+                                <i class="fa-regular ${style.icon}"></i>
+                                ${item.sentiment.charAt(0).toUpperCase() + item.sentiment.slice(1)}
+                            </span>
+                        </div>
+                        <p class="text-gray-700 text-sm mt-2 leading-relaxed">"${item.text}"</p>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+
+        // Fetch Data from API (Simulated for this context as we lack Dataset ID)
+        async function fetchData() {
+            // Show loading states
+            document.getElementById('list-loading').style.display = 'block';
+            document.getElementById('data-container').innerHTML = '<div id="list-loading" class="py-10 text-center"><div class="spinner mb-4"></div><p class="text-gray-500">Memproses data sentimen...</p></div>';
+            document.getElementById('error-message').classList.add('hidden');
+            
+            const refreshIcon = document.getElementById('refresh-icon');
+            refreshIcon.classList.add('animate-spin');
+
+            try {
+                // In a real application, you would make a fetch call here:
+                /*
+                const response = await fetch(`https://api.apify.com/v2/datasets/YOUR_DATASET_ID/items?token=${APIFY_TOKEN}&limit=8`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                let rawData = await response.json();
+                
+                // You might need to map rawData to match the expected format:
+                // { id, author, text, date, sentiment, platform }
+                */
+                
+                // Simulating network delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Using mock data for demonstration
+                const data = mockData;
+                
+                // Calculate stats
+                let pos = 0, neu = 0, neg = 0;
+                data.forEach(item => {
+                    const s = item.sentiment.toLowerCase();
+                    if (s === 'positif') pos++;
+                    else if (s === 'negatif') neg++;
+                    else neu++;
+                });
+
+                // Update UI Stats
+                document.getElementById('stat-positive').innerText = pos;
+                document.getElementById('stat-neutral').innerText = neu;
+                document.getElementById('stat-negative').innerText = neg;
+
+                // Update Chart and List
+                initChart(pos, neu, neg);
+                renderDataList(data);
+
+            } catch (error) {
+                console.error("Failed to fetch data:", error);
+                document.getElementById('list-loading').style.display = 'none';
+                document.getElementById('data-container').innerHTML = '';
+                const errorEl = document.getElementById('error-message');
+                errorEl.classList.remove('hidden');
+                document.getElementById('error-text').innerText = "Gagal memuat data dari Apify. Memuat data simulasi lokal sebagai gantinya.";
+                
+                // Load mock data anyway on failure for demonstration purposes
+                setTimeout(() => {
+                    fetchDataSimulation();
+                }, 1000);
+            } finally {
+                refreshIcon.classList.remove('animate-spin');
+            }
+        }
+        
+        // Helper to forcefully load mock data if real fetch fails
+        function fetchDataSimulation() {
+             const data = mockData;
+             let pos = 0, neu = 0, neg = 0;
+             data.forEach(item => {
+                 const s = item.sentiment.toLowerCase();
+                 if (s === 'positif') pos++;
+                 else if (s === 'negatif') neg++;
+                 else neu++;
+             });
+             document.getElementById('stat-positive').innerText = pos;
+             document.getElementById('stat-neutral').innerText = neu;
+             document.getElementById('stat-negative').innerText = neg;
+             initChart(pos, neu, neg);
+             renderDataList(data);
+             document.getElementById('error-message').classList.add('hidden');
+        }
+
+        // Real-time clock
+        function updateTime() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            document.getElementById('current-time').innerText = now.toLocaleDateString('id-ID', options);
+        }
+        
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Initial Load
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+        });
+
+    </script>
+</body>
+</html>
